@@ -80,7 +80,7 @@ function render() {
   renderLife("playerLife", state.playerLife);
   renderLife("cpuLife", state.cpuLife);
   $("roundNumber").textContent = state.round;
-  $("playerHand").innerHTML = CARD_DATA.map(card => `
+  $("playerHand").textContent = CARD_DATA.map(card => `
   <button
     class="card"
     data-number="${card.number}"
@@ -117,7 +117,7 @@ function render() {
 }
 
 function renderLife(id, life) {
-  $(id).innerHTML = [1, 2, 3 ,4 ,5].map(i => `<span class="heart ${i > life ? "lost" : ""}" aria-hidden="true">♥</span>`).join("");
+  $(id).textContent = [1, 2, 3 ,4 ,5].map(i => `<span class="heart ${i > life ? "lost" : ""}" aria-hidden="true">♥</span>`).join("");
 }
 
 function getCard(number) { return CARD_DATA.find(card => card.number === number); }
@@ -388,13 +388,13 @@ function finishRound(outcome, player, cpu) {
 function showPlayedCard(id, card) {
   const element = $(id);
   element.className = "played-card revealed";
-  element.innerHTML = `<div><div class="number">${card.number}</div><div class="symbol">${card.symbol}</div><div class="name">${card.name}</div></div>`;
+  element.textContent = `<div><div class="number">${card.number}</div><div class="symbol">${card.symbol}</div><div class="name">${card.name}</div></div>`;
 }
 
 function resetPlayedCards() {
   $("cpuPlayed").className = $("playerPlayed").className = "played-card";
-  $("cpuPlayed").innerHTML = "<span>CPUのカード</span>";
-  $("playerPlayed").innerHTML = "<span>あなたのカード</span>";
+  $("cpuPlayed").textContent = "<span>CPUのカード</span>";
+  $("playerPlayed").textContent = "<span>あなたのカード</span>";
 }
 
 function nextRound() {
@@ -462,7 +462,7 @@ rulesDialog.addEventListener("click", event => {
     closeRules();
   }
 });
-$("rulesList").innerHTML = CARD_DATA.map(c => `<div class="rule"><strong>${c.number}｜${c.name}</strong><small>${c.effect}</small></div>`).join("");
+$("rulesList").textContent = CARD_DATA.map(c => `<div class="rule"><strong>${c.number}｜${c.name}</strong><small>${c.effect}</small></div>`).join("");
 resetGame();
 
 const cardConfirmDialog = $("cardConfirmDialog");
