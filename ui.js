@@ -14,7 +14,7 @@ export function renderLife(elementId, life) {
 
   if (!element) return;
 
-  element.textContent = Array.from(
+  element.innerHTML = Array.from(
     { length: MAX_LIFE },
     (_, index) => {
       const lost = index + 1 > life;
@@ -42,7 +42,7 @@ export function renderHand({
 
   if (!handElement) return;
 
-  handElement.textContent = CARD_DATA.map(card => {
+  handElement.innerHTML = CARD_DATA.map(card => {
     const unavailable =
       !cards.includes(card.number) || disabled;
 
@@ -92,7 +92,7 @@ export function showPlayedCard(elementId, cardNumber) {
 
   element.className = "played-card revealed";
 
-  element.textContent = `
+  element.innerHTML = `
     <div>
       <div class="number">${card.number}</div>
       <div class="symbol">${card.symbol}</div>
@@ -110,7 +110,7 @@ export function resetPlayedCard(
   if (!element) return;
 
   element.className = "played-card";
-  element.textContent = `<span>${label}</span>`;
+  element.innerHTML = `<span>${label}</span>`;
 }
 
 export function renderRules(elementId = "rulesList") {
@@ -118,7 +118,7 @@ export function renderRules(elementId = "rulesList") {
 
   if (!element) return;
 
-  element.textContent = CARD_DATA.map(card => `
+  element.innerHTML = CARD_DATA.map(card => `
     <div class="rule">
       <strong>${card.number}｜${card.name}</strong>
       <small>${card.effect}</small>
