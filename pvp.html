@@ -1,0 +1,221 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta
+    name="description"
+    content="タロットカード対戦ゲーム『下剋上のアルカナ』のユーザー対戦モード"
+  >
+  <title>ユーザー対戦｜下剋上のアルカナ</title>
+
+  <link rel="stylesheet" href="style.css">
+  
+</head>
+
+<body>
+  <main class="game-shell">
+    <header class="hero">
+      <p class="eyebrow">ARCANA DUEL</p>
+      <h1 class="title">下剋上のアルカナ</h1>
+      <p>近くのユーザーと部屋コードを共有して対戦します。</p>
+    </header>
+
+    <nav class="pvp-navigation" aria-label="対戦モードの操作">
+      <a class="text-button" href="index.html">モード選択へ戻る</a>
+      <button id="rulesButton" class="text-button" type="button">
+        ルールを見る
+      </button>
+    </nav>
+
+    <!-- 部屋を作成・参加する画面 -->
+    <section id="lobbyScreen" class="pvp-screen lobby-screen">
+      <div class="message-panel lobby-panel">
+        <p class="eyebrow">PLAYER MATCH</p>
+        <h2>ユーザー対戦</h2>
+        <p>
+          1人が部屋を作り、表示された6桁のコードを対戦相手に伝えてください。
+        </p>
+      </div>
+
+      <div class="room-actions">
+        <section class="room-action-panel" aria-labelledby="createRoomTitle">
+          <h2 id="createRoomTitle">部屋を作る</h2>
+          <p>新しい対戦部屋を作成し、相手の参加を待ちます。</p>
+          <button id="createRoomButton" class="primary-button" type="button">
+            部屋を作る
+          </button>
+        </section>
+
+        <section class="room-action-panel" aria-labelledby="joinRoomTitle">
+          <h2 id="joinRoomTitle">部屋に参加する</h2>
+          <label for="roomCodeInput">6桁の部屋コード</label>
+          <input
+            id="roomCodeInput"
+            class="room-code-input"
+            type="text"
+            inputmode="numeric"
+            autocomplete="one-time-code"
+            pattern="[0-9]{6}"
+            maxlength="6"
+            placeholder="例：482913"
+            aria-describedby="lobbyError"
+          >
+          <button id="joinRoomButton" class="secondary-button" type="button">
+            部屋に参加する
+          </button>
+        </section>
+      </div>
+
+      <p id="lobbyError" class="form-error" role="alert" aria-live="assertive"></p>
+    </section>
+
+    <!-- 部屋作成後、相手を待つ画面 -->
+    <section id="waitingScreen" class="pvp-screen waiting-screen" hidden>
+      <div class="message-panel">
+        <p class="eyebrow">WAITING FOR OPPONENT</p>
+        <h2>対戦相手を待っています</h2>
+        <p>次の部屋コードを相手に伝えてください。</p>
+
+        <div class="room-code-box" aria-label="部屋コード">
+          <span>ROOM CODE</span>
+          <strong id="roomCode">------</strong>
+        </div>
+
+        <p>相手が参加すると、自動的に対戦画面へ移動します。</p>
+      </div>
+    </section>
+
+    <!-- ユーザー対戦画面 -->
+    <section id="battleScreen" class="pvp-screen" hidden>
+      <section class="status-panel" aria-label="ゲーム状況">
+        <div class="fighter enemy">
+          <span>対戦相手</span>
+          <div
+            id="opponentLife"
+            class="life"
+            aria-label="対戦相手のライフ"
+          ></div>
+        </div>
+
+        <div class="round-box">
+          <span>ROUND</span>
+          <strong id="roundNumber">1</strong>
+        </div>
+
+        <div class="fighter player">
+          <span>あなた</span>
+          <div
+            id="playerLife"
+            class="life"
+            aria-label="あなたのライフ"
+          ></div>
+        </div>
+      </section>
+
+      <section class="battlefield" aria-live="polite">
+        <div id="opponentPlayed" class="played-card">
+          <span>相手のカード</span>
+        </div>
+
+        <div class="versus" aria-hidden="true">VS</div>
+
+        <div id="playerPlayed" class="played-card">
+          <span>あなたのカード</span>
+        </div>
+      </section>
+
+      <section class="message-panel" aria-live="polite" aria-atomic="true">
+        <h2 id="resultTitle">カードを選んでください</h2>
+        <p id="resultText">
+          両者がカードを選ぶと、同時にカードを公開します。
+        </p>
+      </section>
+
+      <section class="hand-section" aria-labelledby="handTitle">
+        <div class="section-heading">
+          <h2 id="handTitle">あなたの手札</h2>
+          <span id="selectionStatus" class="selection-status" aria-live="polite"></span>
+        </div>
+
+        <div
+          id="playerHand"
+          class="hand"
+          aria-label="あなたの手札"
+        ></div>
+      </section>
+
+      <div class="actions">
+        <button id="nextButton" class="primary-button" type="button" hidden>
+          次のラウンドへ
+        </button>
+
+        <button id="leaveRoomButton" class="secondary-button" type="button">
+          対戦を退出する
+        </button>
+      </div>
+
+      <p id="connectionError" class="form-error" role="alert" aria-live="assertive"></p>
+    </section>
+  </main>
+
+  <!-- ゲームルール -->
+  <dialog id="rulesDialog">
+    <div class="dialog-inner">
+      <button id="closeRules" class="dialog-close" type="button" aria-label="閉じる">
+        ×
+      </button>
+
+      <p class="eyebrow">HOW TO PLAY</p>
+      <h2>ユーザー対戦ルール</h2>
+
+      <ul>
+        <li>部屋を作成した人が、6桁の部屋コードを相手に伝えます。</li>
+        <li>両者がカードを1枚ずつ選択すると、カードが同時に公開されます。</li>
+        <li>カード能力を適用した後、最終的な数字が大きい側が勝利します。</li>
+        <li>敗者はライフを失い、先にライフが0になった側が敗北です。</li>
+        <li>「1 奴隷」と「10 王」が対決すると、奴隷側が即時勝利します。</li>
+        <li>選択を確定したカードは、そのラウンド中に変更できません。</li>
+      </ul>
+
+      <h3>カード能力</h3>
+      <div id="rulesList" class="rules-list"></div>
+    </div>
+  </dialog>
+
+  <!-- スマートフォン用カード確認画面 -->
+  <dialog id="cardConfirmDialog" class="card-confirm-dialog">
+    <div class="card-confirm-inner">
+      <button
+        id="cancelCardButton"
+        class="dialog-close"
+        type="button"
+        aria-label="カード選択をキャンセル"
+      >
+        ×
+      </button>
+
+      <p class="eyebrow">CARD EFFECT</p>
+      <h2>このカードを選びますか？</h2>
+
+      <div class="confirm-card" aria-hidden="true">
+        <span id="confirmCardNumber" class="number"></span>
+        <span id="confirmCardSymbol" class="symbol"></span>
+        <span id="confirmCardName" class="name"></span>
+      </div>
+
+      <p id="confirmCardEffect" class="confirm-card-effect"></p>
+
+      <p class="confirm-warning">
+        確定後は、このラウンド中にカードを変更できません。
+      </p>
+
+      <button id="playCardButton" class="primary-button" type="button">
+        このカードを出す
+      </button>
+    </div>
+  </dialog>
+
+  <script type="module" src="./pvp.js"></script>
+</body>
+</html>

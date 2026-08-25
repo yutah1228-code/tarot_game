@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="1対1のタロットカード対戦ゲーム『下剋上』">
+  <title>タロットバトル</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <main class="game-shell">
+    <header class="hero">
+      <p class="eyebrow">Tarot Battle</p>
+      <h1 class="title">タロットバトル</h1>
+      <p>数字と能力を読み合い、相手のライフを奪え。奴隷は王を討つ。</p>
+    </header>
+    <button id="rulesButton" class="text-button" type="button">ルールを見る</button>
+
+    <section class="status-panel" aria-label="ゲーム状況">
+      <div class="fighter enemy">
+        <span>CPU</span>
+        <div id="cpuLife" class="life" aria-label="CPUのライフ"></div>
+      </div>
+      <div class="round-box">
+        <span>ROUND</span>
+        <strong id="roundNumber">1</strong>
+      </div>
+      <div class="fighter player">
+        <span>あなた</span>
+        <div id="playerLife" class="life" aria-label="あなたのライフ"></div>
+      </div>
+    </section>
+
+    <section class="battlefield" aria-live="polite">
+      <div class="played-card" id="cpuPlayed"><span>CPUのカード</span></div>
+      <div class="versus">VS</div>
+      <div class="played-card" id="playerPlayed"><span>あなたのカード</span></div>
+    </section>
+
+    <section class="message-panel">
+      <h2 id="resultTitle">カードを選んでください</h2>
+      <p id="resultText">両者がカードを1枚ずつ公開します。大きい数字が勝利です。</p>
+    </section>
+
+    <section class="hand-section">
+      <div class="section-heading">
+        <h2>あなたの手札</h2>
+        
+      </div>
+      <div id="playerHand" class="hand" aria-label="あなたの手札"></div>
+    </section>
+
+    <div class="actions">
+      <button id="nextButton" class="primary-button" type="button" hidden>次のラウンド</button>
+      <button id="resetButton" class="secondary-button" type="button">ゲームをやり直す</button>
+    </div>
+
+    
+  </main>
+
+  <dialog id="rulesDialog">
+    <div class="dialog-inner">
+      <button id="closeRules" class="dialog-close" aria-label="閉じる">×</button>
+      <p class="eyebrow">HOW TO PLAY</p>
+      <h2 class="game_rules">ゲームルール</h2>
+      <ul>
+        <li>カードを1枚選ぶと、CPUも同時にカードを出します。</li>
+        <li>カード能力を適用した後、数字が大きい側が勝利します。</li>
+        <li>敗者はライフを1失い、ライフが0になると敗北です。</li>
+        <li>「1 奴隷」と「10 王」が対決すると、奴隷側が即時勝利します。</li>
+        <li>使ったカードは、そのゲーム中は再使用できません。</li>
+      </ul>
+      <h3 class="ability">カード能力</h3>
+      <div id="rulesList" class="rules-list"></div>
+    </div>
+  </dialog>
+
+  <dialog id="cardConfirmDialog" class="card-confirm-dialog">
+  <div class="card-confirm-inner">
+    <button
+      id="cancelCardButton"
+      class="dialog-close"
+      type="button"
+      aria-label="閉じる"
+    >
+      ×
+    </button>
+
+    <p class="eyebrow">CARD EFFECT</p>
+
+    <div class="confirm-card">
+      <span id="confirmCardNumber" class="number"></span>
+      <span id="confirmCardSymbol" class="symbol"></span>
+      <span id="confirmCardName" class="name"></span>
+    </div>
+
+    <p id="confirmCardEffect" class="confirm-card-effect"></p>
+
+    <button id="playCardButton" class="primary-button" type="button">
+      このカードを出す
+    </button>
+  </div>
+</dialog>
+  <script type="module" src="./cpu.js"></script>
+</body>
+</html>
