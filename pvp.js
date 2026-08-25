@@ -355,6 +355,98 @@ async function startNextOnlineRound() {
   );
 }
 
+const cardConfirmDialog =
+  $("cardConfirmDialog");
+
+const cancelCardButton =
+  $("cancelCardButton");
+
+const playCardButton =
+  $("playCardButton");
+
+function openOnlineCardConfirm(cardNumber) {
+  if (!currentRoom) return;
+  if (currentRoom.status !== "choosing") return;
+
+  const card = getCard(cardNumber);
+
+  if (!card) return;
+
+  selectedCardNumber = cardNumber;
+
+  $("confirmCardNumber").textContent =
+    card.number;
+
+  $("confirmCardSymbol").textContent =
+    card.symbol;
+
+  $("confirmCardName").textContent =
+    card.name;
+
+  $("confirmCardEffect").textContent =
+    card.effect;
+
+  if (!cardConfirmDialog.open) {
+    cardConfirmDialog.showModal();
+  }
+}
+
+function closeOnlineCardConfirm() {
+  if (cardConfirmDialog.open) {
+    cardConfirmDialog.close();
+  }
+
+  selectedCardNumber = null;
+}
+
+cancelCardButton.addEventListener(
+  "click",
+  closeOnlineCardConfirm
+);
+
+playCardButton.addEventListener(
+  "click",
+  async () => {
+    if (selectedCardNumber === null) return;
+
+    const cardNumber = selectedCardNumber;
+
+    closeOnlineCardConfirm();
+
+    try {
+      await submitCard(cardNumber);
+    } catch (error) {
+      console.error(
+        "カード選択エラー:",
+        error
+      );
+
+      $("resultTitle").textContent =
+        "カードを選択できませんでした";
+
+      $("resultText").textContent =
+        error.message;
+    }
+  }
+);
+
+cardConfirmDialog.addEventListener(
+  "cancel",
+  event => {
+    event.preventDefault();
+    closeOnlineCardConfirm();
+  }
+);
+
+cardConfirmDialog.addEventListener(
+  "click",
+  event => {
+    if (event.target === cardConfirmDialog) {
+      closeOnlineCardConfirm();
+    }
+  }
+);
+
 function renderRoom() {
   if (!currentRoom || !currentUser) return;
 
@@ -508,3 +600,27 @@ $("nextButton").addEventListener(
 renderRules();
 setupRulesDialog();
 showScreen("lobbyScreen");
+
+$("joinRoomButton").addEventListener(
+  "click",
+  async () => {
+    const button = $("joinRoomButton");
+
+    button.disabled = true;
+    button.textContent = "参加中…";
+    showLobbyError("");
+
+    try {
+      await joinRoom();
+    } catch (error) {
+      console.error("部屋参加エラー:", error);
+
+      showLobbyError(
+        `参加できませんでした：${error.code || error.message}`
+      );
+    } finally {
+      button.disabled = false;
+      button.textContent = "部屋に参加する";
+    }
+  }
+);
