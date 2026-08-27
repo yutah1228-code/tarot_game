@@ -5,6 +5,7 @@ import {
   getDoc,
   setDoc,
   updateDoc,
+  deleteDoc,
   onSnapshot,
   runTransaction,
   serverTimestamp
@@ -40,6 +41,9 @@ let currentRoomCode = null;
 let currentRoom = null;
 let unsubscribeRoom = null;
 let selectedCardNumber = null;
+let pendingChoice = null;
+let resolvingRound = false;
+let advancingRound = false;
 
 function createRoomCode() {
   return String(
@@ -159,37 +163,91 @@ function listenToRoom() {
     doc(db, "rooms", currentRoomCode);
 
   unsubscribeRoom = onSnapshot(
-    roomReference,
-    snapshot => {
-      if (!snapshot.exists()) {
-        showConnectionError(
-          "部屋が削除されました。"
-        );
-        return;
-      }
-
-      currentRoom = snapshot.data();
-      renderRoom();
-
-      if (
-        isHost() &&
-        currentRoom.status === "choosing" &&
-        currentRoom.hostChoice !== null &&
-        currentRoom.guestChoice !== null
-      ) {
-        resolveOnlineRound();
-      }
-
-      if (
-        isHost() &&
-        currentRoom.status === "result" &&
-        currentRoom.hostReady &&
-        currentRoom.guestReady
-      ) {
-        startNextOnlineRound();
-      }
+  roomReference,
+  snapshot => {
+    if (!snapshot.exists()) {
+      showConnectionError(
+        "部屋が削除されました。"
+      );
+      return;
     }
-  );
+
+    currentRoom = snapshot.data();
+
+    if (currentRoom.status === "abandoned") {
+  showScreen("battleScreen");
+
+  $("resultTitle").textContent =
+    "対戦相手が退出しました";
+
+  $("resultText").textContent =
+    "対戦は終了しました。モード選択へ戻ってください。";
+
+  $("nextButton").hidden = true;
+
+  renderHand({
+    elementId: "playerHand",
+    cards: [],
+    disabled: true,
+    onSelect: () => {}
+  });
+
+  return;
+}
+
+    const myChoiceField =
+      isHost() ? "hostChoice" : "guestChoice";
+
+    // Firebase側へ保存されたら仮状態を解除
+    if (currentRoom[myChoiceField] !== null) {
+      pendingChoice = null;
+    }
+
+    renderRoom();
+
+    if (
+      isHost() &&
+      !resolvingRound &&
+      currentRoom.status === "choosing" &&
+      currentRoom.hostChoice !== null &&
+      currentRoom.guestChoice !== null
+    ) {
+      resolvingRound = true;
+
+      resolveOnlineRound()
+        .catch(error => {
+          console.error(
+            "勝敗確定エラー:",
+            error
+          );
+        })
+        .finally(() => {
+          resolvingRound = false;
+        });
+    }
+
+    if (
+      isHost() &&
+      !advancingRound &&
+      currentRoom.status === "result" &&
+      currentRoom.hostReady &&
+      currentRoom.guestReady
+    ) {
+      advancingRound = true;
+
+      startNextOnlineRound()
+        .catch(error => {
+          console.error(
+            "次ラウンド開始エラー:",
+            error
+          );
+        })
+        .finally(() => {
+          advancingRound = false;
+        });
+    }
+  }
+);
 }
 
 function isHost() {
@@ -211,53 +269,37 @@ function getOpponentSide() {
 async function submitCard(cardNumber) {
   if (!currentRoom) return;
   if (currentRoom.status !== "choosing") return;
+  if (pendingChoice !== null) return;
 
   const mySide = getMySide();
-  const myCards =
-    currentRoom.battle[mySide].cards;
+  const myCards = currentRoom.battle[mySide].cards;
 
   if (!myCards.includes(cardNumber)) {
-    return;
+    throw new Error(
+      "このカードは使用できません。"
+    );
   }
-
-  const roomReference =
-    doc(db, "rooms", currentRoomCode);
 
   const choiceField =
     isHost() ? "hostChoice" : "guestChoice";
 
-  await runTransaction(
-    db,
-    async transaction => {
-      const snapshot =
-        await transaction.get(roomReference);
+  const roomReference =
+    doc(db, "rooms", currentRoomCode);
 
-      if (!snapshot.exists()) {
-        throw new Error(
-          "部屋が存在しません。"
-        );
-      }
+  // Firebaseからの返事を待たず、画面では選択済みにする
+  pendingChoice = cardNumber;
+  renderRoom();
 
-      const room = snapshot.data();
-
-      if (room.status !== "choosing") {
-        throw new Error(
-          "現在はカードを選択できません。"
-        );
-      }
-
-      if (room[choiceField] !== null) {
-        throw new Error(
-          "すでにカードを選択しています。"
-        );
-      }
-
-      transaction.update(roomReference, {
-        [choiceField]: cardNumber,
-        updatedAt: serverTimestamp()
-      });
-    }
-  );
+  try {
+    await updateDoc(roomReference, {
+      [choiceField]: cardNumber,
+      updatedAt: serverTimestamp()
+    });
+  } catch (error) {
+    pendingChoice = null;
+    renderRoom();
+    throw error;
+  }
 }
 
 async function resolveOnlineRound() {
@@ -476,10 +518,27 @@ function renderRoom() {
     currentRoom.battle.round;
 
   const myChoiceField =
-    isHost() ? "hostChoice" : "guestChoice";
+  isHost() ? "hostChoice" : "guestChoice";
 
-  const alreadySelected =
-    currentRoom[myChoiceField] !== null;
+const serverChoice =
+  currentRoom[myChoiceField];
+
+const alreadySelected =
+  serverChoice !== null ||
+  pendingChoice !== null;
+
+  const selectionStatus =
+  $("selectionStatus");
+
+if (pendingChoice !== null) {
+  selectionStatus.textContent =
+    "カードを送信中…";
+} else if (serverChoice !== null) {
+  selectionStatus.textContent =
+    "選択済み。相手を待っています…";
+} else {
+  selectionStatus.textContent = "";
+}
 
   renderHand({
     elementId: "playerHand",
@@ -498,23 +557,47 @@ function renderOnlineResult() {
   const outcome = currentRoom.lastOutcome;
 
   if (!outcome) {
-    resetPlayedCard(
-      "opponentPlayed",
-      "相手のカード"
-    );
+  const myChoiceField =
+    isHost() ? "hostChoice" : "guestChoice";
 
+  const opponentChoiceField =
+    isHost() ? "guestChoice" : "hostChoice";
+
+  const myChoice =
+    pendingChoice ??
+    currentRoom[myChoiceField];
+
+  if (myChoice !== null) {
+    showPlayedCard(
+      "playerPlayed",
+      myChoice
+    );
+  } else {
     resetPlayedCard(
       "playerPlayed",
       "あなたのカード"
     );
-
-    $("resultTitle").textContent =
-      currentRoom.status === "choosing"
-        ? "カードを選んでください"
-        : "対戦相手を待っています";
-
-    return;
   }
+
+  resetPlayedCard(
+    "opponentPlayed",
+    currentRoom[opponentChoiceField] !== null
+      ? "相手は選択済み"
+      : "相手のカード"
+  );
+
+  $("resultTitle").textContent =
+    myChoice !== null
+      ? "相手を待っています"
+      : "カードを選んでください";
+
+  $("resultText").textContent =
+    myChoice !== null
+      ? "カードを送信しました。相手の選択を待っています。"
+      : "両者がカードを選ぶと、同時に公開します。";
+
+  return;
+}
 
   const myCard = isHost()
     ? outcome.player1Card
@@ -623,4 +706,56 @@ $("joinRoomButton").addEventListener(
       button.textContent = "部屋に参加する";
     }
   }
+);
+
+async function leaveRoom() {
+  const button = $("leaveRoomButton");
+
+  button.disabled = true;
+  button.textContent = "退出中…";
+
+  try {
+    if (currentRoomCode && currentRoom) {
+      const roomReference =
+        doc(db, "rooms", currentRoomCode);
+
+      const battleFinished =
+        currentRoom.status === "finished" ||
+        currentRoom.battle?.gameOver;
+
+      if (battleFinished || isHost()) {
+        // 対戦終了後、またはホスト退出時は部屋を削除
+        await deleteDoc(roomReference);
+      } else {
+        // 対戦途中にゲストが退出
+        await updateDoc(roomReference, {
+          status: "abandoned",
+          leftUid: currentUser.uid,
+          updatedAt: serverTimestamp()
+        });
+      }
+    }
+  } catch (error) {
+    // データ削除に失敗しても画面からは退出させる
+    console.warn(
+      "部屋の終了処理に失敗しました:",
+      error
+    );
+  } finally {
+    if (unsubscribeRoom) {
+      unsubscribeRoom();
+      unsubscribeRoom = null;
+    }
+
+    currentRoom = null;
+    currentRoomCode = null;
+    pendingChoice = null;
+
+    window.location.href = "./index.html";
+  }
+}
+
+$("leaveRoomButton").addEventListener(
+  "click",
+  leaveRoom
 );
