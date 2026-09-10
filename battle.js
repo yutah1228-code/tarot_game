@@ -164,6 +164,28 @@ export function resolveBattle(
   /*
    * 2 女教皇
    */
+
+  /*
+ * 女教皇同士は引き分け
+ */
+if (player1Card === 2 && player2Card === 2) {
+  const refilled = refillHandsIfNeeded(state);
+
+  return {
+    state,
+    outcome: {
+      winner: "draw",
+      title: "女教皇同士の引き分け",
+      text:
+        "両者が女教皇を出したため、ダメージは発生しません。",
+      player1Card,
+      player2Card,
+      player1Power: 2,
+      player2Power: 2,
+      refilled
+    }
+  };
+}
   if (player1Card === 2 && player2Card % 2 === 0) {
     player1Power = player2Power + 1;
 
@@ -181,44 +203,97 @@ export function resolveBattle(
   }
 
   /*
-   * 5 教皇
-   * 4 皇帝には入れ替えが効かない
-   */
-  if (
-    player1Card === 5 &&
-    player2Power > player1Power
-  ) {
-    if (player2Card === 4) {
-      messages.push(
-        "プレイヤー2の皇帝が強さの入れ替えを無効化"
-      );
-    } else {
-      [player1Power, player2Power] =
-        [player2Power, player1Power];
+ * 5 教皇
+ *
+ * 通常の数字比較とは異なり、
+ * 6〜10には勝利し、1〜4には敗北する。
+ * 5対5は引き分け。
+ *
+ * 女帝・正義・皇帝などの処理より先に判定する。
+ */
+if (player1Card === 5 || player2Card === 5) {
+  let winner = "draw";
 
-      messages.push(
-        "プレイヤー1の教皇が両者の強さを入れ替えた"
-      );
-    }
+  if (player1Card === 5 && player2Card !== 5) {
+    winner =
+      player2Card >= 6
+        ? "player1"
+        : "player2";
   }
 
-  if (
-    player2Card === 5 &&
-    player1Power > player2Power
-  ) {
-    if (player1Card === 4) {
-      messages.push(
-        "プレイヤー1の皇帝が強さの入れ替えを無効化"
-      );
-    } else {
-      [player1Power, player2Power] =
-        [player2Power, player1Power];
-
-      messages.push(
-        "プレイヤー2の教皇が両者の強さを入れ替えた"
-      );
-    }
+  if (player2Card === 5 && player1Card !== 5) {
+    winner =
+      player1Card >= 6
+        ? "player2"
+        : "player1";
   }
+
+  if (winner === "draw") {
+    const refilled = refillHandsIfNeeded(state);
+
+    return {
+      state,
+      outcome: {
+        winner: "draw",
+        title: "教皇同士の引き分け",
+        text:
+          "両者が教皇を出したため、ダメージは発生しません。",
+        player1Card,
+        player2Card,
+        player1Power: 5,
+        player2Power: 5,
+        refilled
+      }
+    };
+  }
+
+  const loser =
+    winner === "player1"
+      ? "player2"
+      : "player1";
+
+  const loserState = state[loser];
+  const winnerLabel =
+    winner === "player1"
+      ? "プレイヤー1"
+      : "プレイヤー2";
+
+  loserState.life = Math.max(
+    0,
+    loserState.life - 1
+  );
+
+  messages.push(
+    `${winnerLabel}の教皇が数字の強弱を逆転`
+  );
+
+  messages.push("1ダメージ");
+
+  if (loserState.life <= 0) {
+    state.gameOver = true;
+    state.winner = winner;
+  }
+
+  const refilled = state.gameOver
+    ? false
+    : refillHandsIfNeeded(state);
+
+  return {
+    state,
+    outcome: {
+      winner,
+      title: `${winnerLabel}の勝利`,
+      text: messages.join("。") + "。",
+      player1Card,
+      player2Card,
+      player1Power:
+        winner === "player1" ? 1 : 0,
+      player2Power:
+        winner === "player2" ? 1 : 0,
+      refilled
+    }
+  };
+}
 
   /*
    * 引き分け

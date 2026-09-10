@@ -28,11 +28,11 @@ export const CARD_DATA = [
     effect: "相手による数値変更の影響を受けない"
   },
   {
-    number: 5,
-    name: "教皇",
-    symbol: "✚",
-    effect: "相手が自分より強い場合、両者の強さを入れ替える"
-  },
+  number: 5,
+  name: "教皇",
+  symbol: "✚",
+  effect: "数字の強弱を逆転し、6〜10には勝利、1〜4には敗北する"
+},
   {
     number: 6,
     name: "恋人",

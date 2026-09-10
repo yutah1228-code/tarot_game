@@ -206,7 +206,6 @@ function listenToRoom() {
     renderRoom();
 
     if (
-      isHost() &&
       !resolvingRound &&
       currentRoom.status === "choosing" &&
       currentRoom.hostChoice !== null &&
@@ -227,7 +226,6 @@ function listenToRoom() {
     }
 
     if (
-      isHost() &&
       !advancingRound &&
       currentRoom.status === "result" &&
       currentRoom.hostReady &&
@@ -271,30 +269,64 @@ async function submitCard(cardNumber) {
   if (currentRoom.status !== "choosing") return;
   if (pendingChoice !== null) return;
 
-  const mySide = getMySide();
-  const myCards = currentRoom.battle[mySide].cards;
-
-  if (!myCards.includes(cardNumber)) {
-    throw new Error(
-      "このカードは使用できません。"
-    );
-  }
-
-  const choiceField =
-    isHost() ? "hostChoice" : "guestChoice";
-
   const roomReference =
     doc(db, "rooms", currentRoomCode);
 
-  // Firebaseからの返事を待たず、画面では選択済みにする
   pendingChoice = cardNumber;
   renderRoom();
 
   try {
-    await updateDoc(roomReference, {
-      [choiceField]: cardNumber,
-      updatedAt: serverTimestamp()
-    });
+    await runTransaction(
+      db,
+      async transaction => {
+        const snapshot =
+          await transaction.get(roomReference);
+
+        if (!snapshot.exists()) {
+          throw new Error(
+            "部屋が見つかりません。"
+          );
+        }
+
+        const room = snapshot.data();
+
+        if (room.status !== "choosing") {
+          throw new Error(
+            "現在はカードを選択できません。"
+          );
+        }
+
+        const host =
+          currentUser.uid === room.hostUid;
+
+        const side =
+          host ? "player1" : "player2";
+
+        const choiceField =
+          host ? "hostChoice" : "guestChoice";
+
+        if (room[choiceField] !== null) {
+          throw new Error(
+            "カードはすでに選択されています。"
+          );
+        }
+
+        if (
+          !room.battle[side].cards.includes(
+            cardNumber
+          )
+        ) {
+          throw new Error(
+            "このカードは使用できません。"
+          );
+        }
+
+        transaction.update(roomReference, {
+          [choiceField]: cardNumber,
+          updatedAt: serverTimestamp()
+        });
+      }
+    );
   } catch (error) {
     pendingChoice = null;
     renderRoom();
@@ -325,11 +357,21 @@ async function resolveOnlineRound() {
         return;
       }
 
-      const result = resolveBattle(
-        room.battle,
-        room.hostChoice,
-        room.guestChoice
-      );
+      const random = createDeterministicRandom(
+  [
+    room.roomCode,
+    room.battle.round,
+    room.hostChoice,
+    room.guestChoice
+  ].join(":")
+);
+
+const result = resolveBattle(
+  room.battle,
+  room.hostChoice,
+  room.guestChoice,
+  random
+);
 
       transaction.update(roomReference, {
         battle: result.state,
@@ -653,6 +695,36 @@ function showScreen(screenId) {
   });
 }
 
+function createDeterministicRandom(seedText) {
+  let seed = 2166136261;
+
+  for (let index = 0; index < seedText.length; index++) {
+    seed ^= seedText.charCodeAt(index);
+    seed = Math.imul(seed, 16777619);
+  }
+
+  return function random() {
+    seed += 0x6D2B79F5;
+
+    let value = seed;
+
+    value = Math.imul(
+      value ^ (value >>> 15),
+      value | 1
+    );
+
+    value ^= value +
+      Math.imul(
+        value ^ (value >>> 7),
+        value | 61
+      );
+
+    return (
+      (value ^ (value >>> 14)) >>> 0
+    ) / 4294967296;
+  };
+}
+
 function showLobbyError(message) {
   $("lobbyError").textContent = message;
 }
@@ -670,10 +742,7 @@ $("createRoomButton").addEventListener(
   createRoom
 );
 
-$("joinRoomButton").addEventListener(
-  "click",
-  joinRoom
-);
+
 
 $("nextButton").addEventListener(
   "click",
