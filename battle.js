@@ -162,45 +162,38 @@ export function resolveBattle(
   }
 
   /*
-   * 2 女教皇
-   */
-
-  /*
- * 女教皇同士は引き分け
+ * 2 女教皇
  */
-if (player1Card === 2 && player2Card === 2) {
-  const refilled = refillHandsIfNeeded(state);
+if (
+  player1Card === 2 &&
+  player2Card !== 2 &&
+  player2Card % 2 === 0
+) {
+  player1Power = player2Power + 1;
 
-  return {
-    state,
-    outcome: {
-      winner: "draw",
-      title: "女教皇同士の引き分け",
-      text:
-        "両者が女教皇を出したため、ダメージは発生しません。",
-      player1Card,
-      player2Card,
-      player1Power: 2,
-      player2Power: 2,
-      refilled
-    }
-  };
+  messages.push(
+    `プレイヤー1の女教皇が強さ${player1Power}になった`
+  );
 }
-  if (player1Card === 2 && player2Card % 2 === 0) {
-    player1Power = player2Power + 1;
 
-    messages.push(
-      `プレイヤー1の女教皇が強さ${player1Power}になった`
-    );
-  }
+if (
+  player2Card === 2 &&
+  player1Card !== 2 &&
+  player1Card % 2 === 0
+) {
+  player2Power = player1Power + 1;
 
-  if (player2Card === 2 && player1Card % 2 === 0) {
-    player2Power = player1Power + 1;
+  messages.push(
+    `プレイヤー2の女教皇が強さ${player2Power}になった`
+  );
+}
 
-    messages.push(
-      `プレイヤー2の女教皇が強さ${player2Power}になった`
-    );
-  }
+/*
+ * 引き分け
+ */
+if (player1Power === player2Power) {
+  // 既存の引き分け処理
+}
 
   /*
  * 5 教皇
