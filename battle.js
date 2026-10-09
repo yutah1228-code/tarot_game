@@ -6,6 +6,10 @@ import {
   getCard
 } from "./cards.js";
 
+
+
+
+
 export function createInitialBattleState() {
   return {
     player1: {
@@ -188,12 +192,7 @@ if (
   );
 }
 
-/*
- * 引き分け
- */
-if (player1Power === player2Power) {
-  // 既存の引き分け処理
-}
+
 
   /*
  * 5 教皇

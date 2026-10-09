@@ -11,6 +11,11 @@ import {
 } from "./battle.js";
 
 import {
+  applyMatchResult,
+  renderRating
+} from "./rating.js";
+
+import {
   $,
   renderLife,
   renderHand,
@@ -23,6 +28,7 @@ import {
 let state = createInitialBattleState();
 let locked = false;
 let selectedCardNumber = null;
+let cpuMatchId = crypto.randomUUID();
 
 function randomCpuCard() {
   const cards = state.player2.cards;
@@ -80,6 +86,41 @@ function playRound(playerCard) {
   );
 
   state = result.state;
+  if (result.state.gameOver) {
+  const playerWon =
+    result.state.winner === "player1";
+
+  const upsetWin =
+    playerWon &&
+    result.outcome.instant === true &&
+    playerCard === 1 &&
+    cpuCard === 10;
+
+  const ratingResult =
+    applyMatchResult({
+      matchId: cpuMatchId,
+      won: playerWon,
+      upsetWin
+    });
+
+  renderRating();
+
+  if (ratingResult.updated) {
+    const ratingChangeElement =
+      document.getElementById(
+        "ratingChange"
+      );
+
+    if (ratingChangeElement) {
+      const sign =
+        ratingResult.change > 0 ? "+" : "";
+
+      ratingChangeElement.hidden = false;
+      ratingChangeElement.textContent =
+        `レート ${sign}${ratingResult.change}`;
+    }
+  }
+}
 
   showPlayedCard(
     "playerPlayed",
@@ -149,10 +190,13 @@ function nextRound() {
 }
 
 function resetGame() {
+  cpuMatchId = crypto.randomUUID();
   state = createInitialBattleState();
   locked = false;
+  selectedCardNumber = null;
 
   $("nextButton").hidden = true;
+
   $("resultTitle").textContent =
     "カードを選んでください";
 
@@ -169,6 +213,17 @@ function resetGame() {
     "あなたのカード"
   );
 
+  const ratingChangeElement =
+    document.getElementById(
+      "ratingChange"
+    );
+
+  if (ratingChangeElement) {
+    ratingChangeElement.hidden = true;
+    ratingChangeElement.textContent = "";
+  }
+
+  renderRating();
   render();
 }
 
@@ -245,11 +300,15 @@ $("resetButton").addEventListener(
   resetGame
 );
 
+
 // ルール一覧を生成
 renderRules();
 
 // ルールダイアログを有効化
 setupRulesDialog();
+
+
+
 
 // ゲーム開始
 resetGame();
